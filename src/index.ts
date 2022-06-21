@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { App } from "@slack/bolt";
+import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import { subDays } from "date-fns";
 
 //
@@ -25,7 +26,7 @@ const fetchLatestMessages = async (
   const messagesOldestTimestamp =
     subDays(new Date(), forwardedDays).getTime() / 1000;
 
-  const conversationsHistoryResults = await Promise.all(
+  const conversationsHistoryMessages = await Promise.all(
     await channelIds.map(async (channelId) => {
       const res = await boltClient.conversations
         .history({
@@ -35,23 +36,24 @@ const fetchLatestMessages = async (
         })
         .catch((e) => {
           console.log(e);
-          return null;
         });
 
       return res;
     })
   ).then((results) =>
-    results
-      .filter((result) => result)
-      .flatMap((result) => result?.messages)
-      .filter((message) => message)
+    results.flatMap((result) => result?.messages).filter((result) => result)
   );
 
-  return conversationsHistoryResults;
+  return conversationsHistoryMessages as Message[];
 };
 
-// TODO うまく型をつけたい
-// const composeForwardedContent = (conversationsHistory: ) => { third }
+const composeForwardedContent = (
+  messages: Message[],
+  maxMessageLength?: number
+) =>
+  messages
+    .map((message) => message.text?.slice(0, maxMessageLength))
+    .join("\n");
 
 //
 // main
@@ -59,14 +61,21 @@ const fetchLatestMessages = async (
 const main = async () => {
   console.log("starting process...", new Date().toISOString());
 
-  const conversationsHistoryResults = await fetchLatestMessages(
+  const conversationsHistoryMessages = await fetchLatestMessages(
     process.env.FORWARDED_CHANNEL_IDS?.split(" ") ?? [],
     +(process.env.FORWARDED_DAYS ?? 7),
     process.env.MAX_MESSAGES_IN_CHANNEL as number | undefined
   );
   console.log(
-    "conversationsHistoryResults.length:",
-    conversationsHistoryResults.length
+    "conversationsHistoryMessages.length:",
+    conversationsHistoryMessages.length
   );
+
+  // TODO 内容を精査・改善（API呼び出しの時点で伝わりにくい切り取られ方をしている）
+  const forwardedContent = composeForwardedContent(
+    conversationsHistoryMessages,
+    process.env.MAX_MESSAGE_LENGTH as number | undefined
+  );
+  console.log("forwardedContent\n", forwardedContent);
 };
 main();
