@@ -2,24 +2,26 @@
   "name": "tobiiro",
   "version": "1.0.0",
   "description": "batch program to forward slack messages to line notify",
-  "main": "index.ts",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "ts-node src/index.ts"
   },
   "author": "Kazuki USHIJIMA",
   "license": "MIT",
   "dependencies": {
     "@slack/bolt": "3.11.3",
+    "date-fns": "2.28.0",
     "dotenv": "16.0.1",
-    "node-cron": "3.0.1",
-    "ts-node": "10.8.1",
-    "typescript": "4.7.4"
+    "node-cron": "3.0.1"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.28.0",
     "@typescript-eslint/parser": "^5.28.0",
     "eslint": "^8.18.0",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.26.0"
+    "eslint-plugin-import": "^2.26.0",
+    "ts-node": "10.8.1",
+    "typescript": "4.7.4"
   }
 }
