@@ -4,10 +4,6 @@ import { Message } from "@slack/web-api/dist/response/ConversationsHistoryRespon
 import { subDays } from "date-fns";
 
 //
-// Types
-//
-
-//
 // instances
 //
 const { client: boltClient } = new App({
@@ -18,7 +14,46 @@ const { client: boltClient } = new App({
 //
 // Functions
 //
+const getChannelURL = (channelId: string, slackUrl: string) => {
+  const { host: slackUrlHost } = new URL(slackUrl);
+
+  return `https://${slackUrlHost}/archives/${channelId}`;
+};
+
+const fetchChannelName = async (channelId: string) => {
+  const conversationsInfo = await boltClient.conversations
+    .info({ channel: channelId })
+    .catch((e) => {
+      console.log(e);
+    });
+  const { name_normalized: nameNormalized, name } =
+    conversationsInfo?.channel ?? {};
+
+  return nameNormalized ?? name ?? "";
+};
+
 const fetchLatestMessages = async (
+  channelId: string,
+  messagesOldestTimestamp: number,
+  maxMessagesInChannel?: number
+) => {
+  const conversationsHistory = await boltClient.conversations
+    .history({
+      channel: channelId,
+      limit: maxMessagesInChannel,
+      oldest: `${messagesOldestTimestamp}`,
+    })
+    .catch((e) => {
+      console.log(e);
+    });
+
+  console.log("conversationsHistory", conversationsHistory);
+
+  return conversationsHistory?.messages ?? [];
+};
+
+const fetchLatestUpdates = async (
+  slackUrl: string,
   channelIds: string[],
   forwardedDays: number,
   maxMessagesInChannel?: number
@@ -26,56 +61,66 @@ const fetchLatestMessages = async (
   const messagesOldestTimestamp =
     subDays(new Date(), forwardedDays).getTime() / 1000;
 
-  const conversationsHistoryMessages = await Promise.all(
+  const conversationsHistoryList = await Promise.all(
     await channelIds.map(async (channelId) => {
-      const res = await boltClient.conversations
-        .history({
-          channel: channelId,
-          limit: maxMessagesInChannel,
-          oldest: `${messagesOldestTimestamp}`,
-        })
-        .catch((e) => {
-          console.log(e);
-        });
+      const channelName = await fetchChannelName(channelId);
+      const channelUrl = getChannelURL(channelId, slackUrl);
+      const messages = await fetchLatestMessages(
+        channelId,
+        messagesOldestTimestamp,
+        maxMessagesInChannel
+      );
 
-      return res;
+      return { channelName, channelUrl, messages };
     })
-  ).then((results) =>
-    results.flatMap((result) => result?.messages).filter((result) => result)
   );
 
-  return conversationsHistoryMessages as Message[];
+  return conversationsHistoryList;
 };
 
 const composeForwardedContent = (
-  messages: Message[],
+  conversationsHistoryList: {
+    channelName: string;
+    channelUrl: string;
+    messages: Message[];
+  }[],
   maxMessageLength?: number
 ) =>
-  messages
-    .map((message) => message.text?.slice(0, maxMessageLength))
-    .join("\n");
+  conversationsHistoryList.map(({ channelName, channelUrl, messages }) => {
+    if (!messages.length) {
+      return "";
+    }
+    const joinedMessages = messages
+      .map((message) => message.text?.slice(0, maxMessageLength))
+      .join("\n");
 
+    return `${channelName}に新着投稿があります\n\n${joinedMessages}\n\nslackで確認\n${channelUrl}`;
+  });
 //
 // main
 //
 const main = async () => {
   console.log("starting process...", new Date().toISOString());
 
-  const conversationsHistoryMessages = await fetchLatestMessages(
+  const conversationsHistoryList = await fetchLatestUpdates(
+    process.env.SLACK_URL ?? "",
     process.env.FORWARDED_CHANNEL_IDS?.split(" ") ?? [],
     +(process.env.FORWARDED_DAYS ?? 7),
     process.env.MAX_MESSAGES_IN_CHANNEL as number | undefined
   );
   console.log(
-    "conversationsHistoryMessages.length:",
-    conversationsHistoryMessages.length
+    "conversationsHistoryList.length:",
+    conversationsHistoryList.length
   );
 
-  // TODO 内容を精査・改善（API呼び出しの時点で伝わりにくい切り取られ方をしている）
-  const forwardedContent = composeForwardedContent(
-    conversationsHistoryMessages,
+  // TODO collaさんは「CollaさんからN件」とする
+  // TODO メンションを名前で置換したい users.info users:read
+  // TODO 投稿者名も欲しい  Message['user']
+
+  const forwardedContents = composeForwardedContent(
+    conversationsHistoryList,
     process.env.MAX_MESSAGE_LENGTH as number | undefined
   );
-  console.log("forwardedContent\n", forwardedContent);
+  console.log("forwardedContents\n", forwardedContents);
 };
 main();
