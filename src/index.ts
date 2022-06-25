@@ -32,6 +32,15 @@ const fetchChannelName = async (channelId: string) => {
   return nameNormalized ?? name ?? "";
 };
 
+const fetchUserName = async (userId: string) => {
+  const userInfo = await boltClient.users.info({ user: userId }).catch((e) => {
+    console.log(e);
+  });
+
+  const { real_name: realName, name } = userInfo?.user ?? {};
+  return realName ?? name ?? "";
+};
+
 const fetchLatestMessages = async (
   channelId: string,
   messagesOldestTimestamp: number,
@@ -78,7 +87,22 @@ const fetchLatestUpdates = async (
   return conversationsHistoryList;
 };
 
-const composeForwardedContent = (
+const composeForwardedMessage = async (
+  message: Message,
+  maxMessageLength?: number
+) => {
+  const { text, user } = message;
+  if (!text || !user) {
+    return;
+  }
+
+  const slicedText = text.slice(0, maxMessageLength);
+  const userName = await fetchUserName(user);
+
+  return `${userName}さんの投稿\n${slicedText}`;
+};
+
+const composeForwardedContent = async (
   conversationsHistoryList: {
     channelName: string;
     channelUrl: string;
@@ -86,16 +110,28 @@ const composeForwardedContent = (
   }[],
   maxMessageLength?: number
 ) =>
-  conversationsHistoryList.map(({ channelName, channelUrl, messages }) => {
-    if (!messages.length) {
-      return "";
-    }
-    const joinedMessages = messages
-      .map((message) => message.text?.slice(0, maxMessageLength))
-      .join("\n");
+  await Promise.all(
+    conversationsHistoryList.map(
+      async ({ channelName, channelUrl, messages }) => {
+        if (!messages.length) {
+          return "";
+        }
 
-    return `${channelName}に新着投稿があります\n\n${joinedMessages}\n\nslackで確認\n${channelUrl}`;
-  });
+        const composedMessages = await Promise.all(
+          messages.map(
+            async (message) =>
+              await composeForwardedMessage(message, maxMessageLength)
+          )
+        );
+
+        const joinedMessages = composedMessages
+          .filter((message) => message)
+          .join("\n\n");
+
+        return `${channelName}に新着投稿があります\n\n${joinedMessages}\n\nslackで確認\n${channelUrl}`;
+      }
+    )
+  );
 //
 // main
 //
@@ -115,9 +151,9 @@ const main = async () => {
 
   // TODO collaさんは「CollaさんからN件」とする
   // TODO メンションを名前で置換したい users.info users:read
-  // TODO 投稿者名も欲しい  Message['user']
+  // TODO await一旦代入
 
-  const forwardedContents = composeForwardedContent(
+  const forwardedContents = await composeForwardedContent(
     conversationsHistoryList,
     process.env.MAX_MESSAGE_LENGTH as number | undefined
   );
