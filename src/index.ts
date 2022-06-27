@@ -4,6 +4,11 @@ import { Message } from "@slack/web-api/dist/response/ConversationsHistoryRespon
 import { subDays } from "date-fns";
 
 //
+// constants
+//
+const mentionRegExp = /<@.+>/g;
+
+//
 // instances
 //
 const { client: boltClient } = new App({
@@ -14,6 +19,9 @@ const { client: boltClient } = new App({
 //
 // Functions
 //
+const getUserIdFromMentionStr = (mentionStr: string) =>
+  mentionStr.replace(/[<>@]/g, "");
+
 const getChannelURL = (channelId: string, slackUrl: string) => {
   const { host: slackUrlHost } = new URL(slackUrl);
 
@@ -87,6 +95,31 @@ const fetchLatestUpdates = async (
   return conversationsHistoryList;
 };
 
+const replaceMentions = async (text: string) => {
+  if (!mentionRegExp.test(text)) {
+    return text;
+  }
+
+  const mentionedUserIds =
+    text
+      .match(mentionRegExp)
+      ?.map((mentionStr) => getUserIdFromMentionStr(mentionStr)) ?? [];
+
+  const mentionedUsers = await Promise.all(
+    await mentionedUserIds.map(async (mentionedUserId) => {
+      const mentionedUserName = await fetchUserName(mentionedUserId);
+
+      return [mentionedUserId, mentionedUserName] as const;
+    })
+  ).then((mentionedUserEntries) => new Map(mentionedUserEntries));
+
+  return text.replace(mentionRegExp, (mentionStr) => {
+    const userId = getUserIdFromMentionStr(mentionStr);
+
+    return mentionedUsers.get(userId) ?? "";
+  });
+};
+
 const composeForwardedMessage = async (
   message: Message,
   maxMessageLength?: number
@@ -97,9 +130,10 @@ const composeForwardedMessage = async (
   }
 
   const slicedText = text.slice(0, maxMessageLength);
+  const slicedTextWithMentionsReplaced = await replaceMentions(slicedText);
   const userName = await fetchUserName(user);
 
-  return `${userName}さんの投稿\n${slicedText}`;
+  return `${userName}さんの投稿\n${slicedTextWithMentionsReplaced}`;
 };
 
 const composeForwardedContent = async (
@@ -150,7 +184,6 @@ const main = async () => {
   );
 
   // TODO collaさんは「CollaさんからN件」とする
-  // TODO メンションを名前で置換したい users.info users:read
   // TODO await一旦代入
 
   const forwardedContents = await composeForwardedContent(
