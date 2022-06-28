@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fetch from 'node-fetch';
 import { App } from '@slack/bolt';
 import { Message } from '@slack/web-api/dist/response/ConversationsHistoryResponse';
 import { subDays } from 'date-fns';
@@ -7,6 +8,7 @@ import { subDays } from 'date-fns';
 // constants
 //
 const mentionRegExp = /<@.+>/g;
+const LINE_API_URL = 'https://notify-api.line.me/api/notify';
 
 //
 // instances
@@ -154,6 +156,33 @@ const composeForwardedContent = async (
     })
   ).then((forwardedContents) => forwardedContents.filter((content) => content));
 
+const notifyLine = async (content: string, lineNotifyAccessToken: string) => {
+  const body = new URLSearchParams({ message: content });
+
+  await fetch(LINE_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${lineNotifyAccessToken}`,
+    },
+    body,
+  })
+    .then((res) => {
+      // eslint-disable-next-line no-console
+      console.log('Request sent! status:', res.status);
+    })
+    .catch((e) => {
+      console.error(e);
+    });
+};
+
+const handleNotifiedContents = async (contents: string[], lineNotifyAccessTokens: string[]) => {
+  contents.forEach(async (content) => {
+    lineNotifyAccessTokens.forEach(async (token) => {
+      notifyLine(content, token);
+    });
+  });
+};
+
 //
 // main
 //
@@ -175,6 +204,12 @@ const main = async () => {
     process.env.MAX_MESSAGE_LENGTH as number | undefined
   );
 
-  console.log('forwardedContents\n', forwardedContents);
+  await handleNotifiedContents(
+    forwardedContents,
+    process.env.LINE_NOTIFY_ACCESS_TOKENS?.split(' ') ?? []
+  );
+
+  // eslint-disable-next-line no-console
+  console.log('done', new Date().toISOString());
 };
 main();
