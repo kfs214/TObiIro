@@ -1,7 +1,7 @@
-import "dotenv/config";
-import { App } from "@slack/bolt";
-import { Message } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import { subDays } from "date-fns";
+import 'dotenv/config';
+import { App } from '@slack/bolt';
+import { Message } from '@slack/web-api/dist/response/ConversationsHistoryResponse';
+import { subDays } from 'date-fns';
 
 //
 // constants
@@ -19,8 +19,7 @@ const { client: boltClient } = new App({
 //
 // Functions
 //
-const getUserIdFromMentionStr = (mentionStr: string) =>
-  mentionStr.replace(/[<>@]/g, "");
+const getUserIdFromMentionStr = (mentionStr: string) => mentionStr.replace(/[<>@]/g, '');
 
 const getChannelURL = (channelId: string, slackUrl: string) => {
   const { host: slackUrlHost } = new URL(slackUrl);
@@ -32,21 +31,20 @@ const fetchChannelName = async (channelId: string) => {
   const conversationsInfo = await boltClient.conversations
     .info({ channel: channelId })
     .catch((e) => {
-      console.log(e);
+      console.error(e);
     });
-  const { name_normalized: nameNormalized, name } =
-    conversationsInfo?.channel ?? {};
+  const { name_normalized: nameNormalized, name } = conversationsInfo?.channel ?? {};
 
-  return nameNormalized ?? name ?? "";
+  return nameNormalized ?? name ?? '';
 };
 
 const fetchUserName = async (userId: string) => {
   const userInfo = await boltClient.users.info({ user: userId }).catch((e) => {
-    console.log(e);
+    console.error(e);
   });
 
   const { real_name: realName, name } = userInfo?.user ?? {};
-  return realName ?? name ?? "";
+  return realName ?? name ?? '';
 };
 
 const fetchLatestMessages = async (
@@ -61,10 +59,8 @@ const fetchLatestMessages = async (
       oldest: `${messagesOldestTimestamp}`,
     })
     .catch((e) => {
-      console.log(e);
+      console.error(e);
     });
-
-  console.log("conversationsHistory", conversationsHistory);
 
   return conversationsHistory?.messages ?? [];
 };
@@ -75,11 +71,10 @@ const fetchLatestUpdates = async (
   forwardedDays: number,
   maxMessagesInChannel?: number
 ) => {
-  const messagesOldestTimestamp =
-    subDays(new Date(), forwardedDays).getTime() / 1000;
+  const messagesOldestTimestamp = subDays(new Date(), forwardedDays).getTime() / 1000;
 
   const conversationsHistoryList = await Promise.all(
-    await channelIds.map(async (channelId) => {
+    channelIds.map(async (channelId) => {
       const channelName = await fetchChannelName(channelId);
       const channelUrl = getChannelURL(channelId, slackUrl);
       const messages = await fetchLatestMessages(
@@ -101,12 +96,10 @@ const replaceMentions = async (text: string) => {
   }
 
   const mentionedUserIds =
-    text
-      .match(mentionRegExp)
-      ?.map((mentionStr) => getUserIdFromMentionStr(mentionStr)) ?? [];
+    text.match(mentionRegExp)?.map((mentionStr) => getUserIdFromMentionStr(mentionStr)) ?? [];
 
   const mentionedUsers = await Promise.all(
-    await mentionedUserIds.map(async (mentionedUserId) => {
+    mentionedUserIds.map(async (mentionedUserId) => {
       const mentionedUserName = await fetchUserName(mentionedUserId);
 
       return [mentionedUserId, mentionedUserName] as const;
@@ -116,17 +109,14 @@ const replaceMentions = async (text: string) => {
   return text.replace(mentionRegExp, (mentionStr) => {
     const userId = getUserIdFromMentionStr(mentionStr);
 
-    return mentionedUsers.get(userId) ?? "";
+    return mentionedUsers.get(userId) ?? '';
   });
 };
 
-const composeForwardedMessage = async (
-  message: Message,
-  maxMessageLength?: number
-) => {
+const composeForwardedMessage = async (message: Message, maxMessageLength?: number) => {
   const { text, user } = message;
   if (!text || !user) {
-    return;
+    return '';
   }
 
   const slicedText = text.slice(0, maxMessageLength);
@@ -144,52 +134,45 @@ const composeForwardedContent = async (
   }[],
   maxMessageLength?: number
 ) =>
-  await Promise.all(
-    conversationsHistoryList.map(
-      async ({ channelName, channelUrl, messages }) => {
-        if (!messages.length) {
-          return "";
-        }
-
-        const composedMessages = await Promise.all(
-          messages.map(
-            async (message) =>
-              await composeForwardedMessage(message, maxMessageLength)
-          )
-        );
-
-        const joinedMessages = composedMessages
-          .filter((message) => message)
-          .join("\n\n");
-
-        return `${channelName}に新着投稿があります\n\n${joinedMessages}\n\nslackで確認\n${channelUrl}`;
+  Promise.all(
+    conversationsHistoryList.map(async ({ channelName, channelUrl, messages }) => {
+      if (!messages.length) {
+        return '';
       }
-    )
-  );
+
+      const composedMessages = await Promise.all(
+        messages.map(async (message) => composeForwardedMessage(message, maxMessageLength))
+      );
+
+      const joinedMessages = composedMessages.filter((message) => message).join('\n\n');
+
+      return `${channelName}に新着投稿があります\n\n${joinedMessages}\n\nslackで確認\n${channelUrl}`;
+    })
+  ).then((forwardedContents) => forwardedContents.filter((content) => content));
+
 //
 // main
 //
 const main = async () => {
-  console.log("starting process...", new Date().toISOString());
+  // eslint-disable-next-line no-console
+  console.log('starting process...', new Date().toISOString());
 
   const conversationsHistoryList = await fetchLatestUpdates(
-    process.env.SLACK_URL ?? "",
-    process.env.FORWARDED_CHANNEL_IDS?.split(" ") ?? [],
+    process.env.SLACK_URL ?? '',
+    process.env.FORWARDED_CHANNEL_IDS?.split(' ') ?? [],
     +(process.env.FORWARDED_DAYS ?? 7),
     process.env.MAX_MESSAGES_IN_CHANNEL as number | undefined
   );
-  console.log(
-    "conversationsHistoryList.length:",
-    conversationsHistoryList.length
-  );
+  // eslint-disable-next-line no-console
+  console.log('conversationsHistoryList.length:', conversationsHistoryList.length);
 
   // TODO collaさんは「CollaさんからN件」とする
-  // TODO await一旦代入
 
   const forwardedContents = await composeForwardedContent(
     conversationsHistoryList,
     process.env.MAX_MESSAGE_LENGTH as number | undefined
   );
-  console.log("forwardedContents\n", forwardedContents);
+
+  console.log('forwardedContents\n', forwardedContents);
 };
 main();
