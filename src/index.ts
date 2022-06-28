@@ -62,7 +62,11 @@ const fetchLatestMessages = async (
       console.error(e);
     });
 
-  return conversationsHistory?.messages ?? [];
+  const sortedConversationsHistory = conversationsHistory?.messages?.sort(
+    (a, b) => +(a.ts ?? 0) - +(b.ts ?? 0)
+  );
+
+  return sortedConversationsHistory ?? [];
 };
 
 const fetchLatestUpdates = async (
@@ -165,8 +169,6 @@ const main = async () => {
   );
   // eslint-disable-next-line no-console
   console.log('conversationsHistoryList.length:', conversationsHistoryList.length);
-
-  // TODO collaさんは「CollaさんからN件」とする
 
   const forwardedContents = await composeForwardedContent(
     conversationsHistoryList,
