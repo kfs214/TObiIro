@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import cron from 'node-cron';
 import fetch from 'node-fetch';
 import { App } from '@slack/bolt';
 import { Message } from '@slack/web-api/dist/response/ConversationsHistoryResponse';
@@ -10,7 +9,6 @@ import { subDays } from 'date-fns';
 //
 const mentionRegExp = /<@.+>/g;
 const LINE_API_URL = 'https://notify-api.line.me/api/notify';
-const DEFAULT_CRON_SETTING = '0 0 * * 6';
 
 //
 // instances
@@ -210,14 +208,9 @@ const main = async () => {
 };
 
 // eslint-disable-next-line no-console
-console.log('cron job to be set...', new Date().toISOString());
+console.log('starting process...', new Date().toISOString());
 
-cron.schedule(process.env.CRON_SETTING ?? DEFAULT_CRON_SETTING, async () => {
-  // eslint-disable-next-line no-console
-  console.log('starting process...', new Date().toISOString());
-
-  await main();
-
+main().then(() => {
   // eslint-disable-next-line no-console
   console.log('done', new Date().toISOString());
 });
