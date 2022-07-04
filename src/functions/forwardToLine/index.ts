@@ -4,11 +4,7 @@ export default {
   handler: `${handlerPath(__dirname)}/handler.main`,
   events: [
     {
-      http: {
-        method: 'get',
-        path: 'forwardToLine',
-        request: {},
-      },
+      schedule: 'cron(14 3 ? * SAT *)',
     },
   ],
 };
