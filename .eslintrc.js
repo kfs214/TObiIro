@@ -11,5 +11,9 @@ module.exports = {
   },
   plugins: ['@typescript-eslint'],
   ignorePatterns: ['dist/**/*'],
-  rules: { 'no-console': ['warn', { allow: ['warn', 'error'] }] },
+  rules: {
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'import/prefer-default-export': 'off',
+    'import/no-unresolved': 'off',
+  },
 };

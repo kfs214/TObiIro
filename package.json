@@ -2,35 +2,42 @@
   "name": "tobiiro",
   "version": "1.0.0",
   "description": "batch program to forward slack messages to line notify",
-  "main": "dist/index.js",
+  "main": "serverless.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "lint": "eslint src/*"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Kazuki USHIJIMA",
-  "license": "MIT",
+  "engines": {
+    "node": ">=14.15.0"
+  },
   "dependencies": {
     "@slack/bolt": "3.11.3",
     "@slack/web-api": "6.7.2",
     "date-fns": "2.28.0",
     "dotenv": "16.0.1",
-    "node-cron": "3.0.1",
+    "json-schema-to-ts": "^2.5.4",
     "node-fetch": "2.6.7",
     "uuid": "8.3.2"
   },
   "devDependencies": {
+    "@serverless/typescript": "^3.0.0",
+    "@types/aws-lambda": "^8.10.71",
+    "@types/node": "^14.14.25",
     "@types/node-cron": "^3.0.1",
     "@types/node-fetch": "^2.6.2",
     "@types/uuid": "^8.3.4",
     "@typescript-eslint/eslint-plugin": "^5.28.0",
     "@typescript-eslint/parser": "^5.28.0",
+    "esbuild": "^0.14.11",
     "eslint": "^8.18.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.26.0",
+    "serverless": "^3.0.0",
+    "serverless-esbuild": "^1.23.3",
     "ts-node": "10.8.1",
+    "tsconfig-paths": "^3.9.0",
     "typescript": "4.7.4"
-  }
+  },
+  "author": "Kazuki USHIJIMA",
+  "license": "MIT"
 }

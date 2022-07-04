@@ -1,4 +1,14 @@
-.DS_Store
+# package directories
 node_modules
+jspm_packages
+
+# Serverless directories
+.serverless
+
+# esbuild directories
+.esbuild
+
+# others
+.DS_Store
 *.local
 .env

@@ -186,7 +186,10 @@ const handleNotifiedContents = async (contents: string[], lineNotifyAccessTokens
 //
 // main
 //
-const main = async () => {
+export const main = async () => {
+  // eslint-disable-next-line no-console
+  console.log('starting process...', new Date().toISOString());
+
   const conversationsHistoryList = await fetchLatestUpdates(
     process.env.SLACK_URL ?? '',
     process.env.FORWARDED_CHANNEL_IDS?.split(' ') ?? [],
@@ -204,13 +207,13 @@ const main = async () => {
   await handleNotifiedContents(
     forwardedContents,
     process.env.LINE_NOTIFY_ACCESS_TOKENS?.split(' ') ?? []
-  );
+  ).then(() => {
+    // eslint-disable-next-line no-console
+    console.log('done', new Date().toISOString());
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: 'DONE' }),
+    };
+  });
 };
-
-// eslint-disable-next-line no-console
-console.log('starting process...', new Date().toISOString());
-
-main().then(() => {
-  // eslint-disable-next-line no-console
-  console.log('done', new Date().toISOString());
-});
