@@ -32,18 +32,14 @@ const getChannelURL = (channelId: string, slackUrl: string) => {
 const fetchChannelName = async (channelId: string) => {
   const conversationsInfo = await boltClient.conversations
     .info({ channel: channelId })
-    .catch((e) => {
-      console.error(e);
-    });
+    .catch(console.error);
   const { name_normalized: nameNormalized, name } = conversationsInfo?.channel ?? {};
 
   return nameNormalized ?? name ?? '';
 };
 
 const fetchUserName = async (userId: string) => {
-  const userInfo = await boltClient.users.info({ user: userId }).catch((e) => {
-    console.error(e);
-  });
+  const userInfo = await boltClient.users.info({ user: userId }).catch(console.error);
 
   const { real_name: realName, name } = userInfo?.user ?? {};
   return realName ?? name ?? '';
@@ -60,9 +56,7 @@ const fetchLatestMessages = async (
       limit: maxMessagesInChannel,
       oldest: `${messagesOldestTimestamp}`,
     })
-    .catch((e) => {
-      console.error(e);
-    });
+    .catch(console.error);
 
   const sortedConversationsHistory = conversationsHistory?.messages?.sort(
     (a, b) => +(a.ts ?? 0) - +(b.ts ?? 0)
@@ -170,9 +164,7 @@ const notifyLine = async (content: string, lineNotifyAccessToken: string) => {
       // eslint-disable-next-line no-console
       console.log('Request sent! status:', res.status);
     })
-    .catch((e) => {
-      console.error(e);
-    });
+    .catch(console.error);
 };
 
 const handleNotifiedContents = async (contents: string[], lineNotifyAccessTokens: string[]) => {
