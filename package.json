@@ -4,7 +4,8 @@
   "description": "batch program to forward slack messages to line notify",
   "main": "serverless.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint src/**/*.ts"
   },
   "engines": {
     "node": ">=14.15.0"
