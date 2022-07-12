@@ -153,27 +153,23 @@ const composeForwardedContent = async (
 const notifyLine = async (content: string, lineNotifyAccessToken: string) => {
   const body = new URLSearchParams({ message: content });
 
-  await fetch(LINE_API_URL, {
+  return fetch(LINE_API_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${lineNotifyAccessToken}`,
     },
     body,
   })
-    .then((res) => {
-      // eslint-disable-next-line no-console
-      console.log('Request sent! status:', res.status);
-    })
+    .then((res) => res.status)
     .catch(console.error);
 };
 
-const handleNotifiedContents = async (contents: string[], lineNotifyAccessTokens: string[]) => {
-  contents.forEach(async (content) => {
-    lineNotifyAccessTokens.forEach(async (token) => {
-      notifyLine(content, token);
-    });
-  });
-};
+const handleNotifiedContents = async (contents: string[], lineNotifyAccessTokens: string[]) =>
+  Promise.all(
+    contents.map(async (content) =>
+      Promise.all(lineNotifyAccessTokens.map(async (token) => notifyLine(content, token)))
+    )
+  ).then((statusCodes) => statusCodes.flat());
 
 //
 // main
@@ -196,16 +192,29 @@ export const main = async () => {
     process.env.MAX_MESSAGE_LENGTH as number | undefined
   );
 
-  await handleNotifiedContents(
+  const result = await handleNotifiedContents(
     forwardedContents,
     process.env.LINE_NOTIFY_ACCESS_TOKENS?.split(' ') ?? []
-  ).then(() => {
-    // eslint-disable-next-line no-console
-    console.log('done', new Date().toISOString());
+  )
+    .then((statusCodes) => {
+      // eslint-disable-next-line no-console
+      console.log('done', new Date().toISOString());
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'DONE' }),
-    };
-  });
+      // eslint-disable-next-line no-console
+      console.log('statusCodes:', statusCodes);
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ message: 'DONE' }),
+      };
+    })
+    .catch((e) => {
+      console.error(e);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ message: e }),
+      };
+    });
+
+  return result;
 };
