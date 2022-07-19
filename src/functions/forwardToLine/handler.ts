@@ -123,7 +123,7 @@ const composeForwardedMessage = async (message: Message, maxMessageLength?: numb
   const slicedTextWithMentionsReplaced = await replaceMentions(slicedText);
   const userName = await fetchUserName(user);
 
-  return `${userName}さんの投稿\n${slicedTextWithMentionsReplaced}`;
+  return `## ${userName}さんの投稿\n${slicedTextWithMentionsReplaced}`;
 };
 
 const composeForwardedContent = async (
@@ -146,7 +146,7 @@ const composeForwardedContent = async (
 
       const joinedMessages = composedMessages.filter((message) => message).join('\n\n');
 
-      return `${channelName}に新着投稿があります\n\n${joinedMessages}\n\nslackで確認\n${channelUrl}`;
+      return `${channelName}に新着投稿があります\n\n${joinedMessages}\n\n## slackで確認\n${channelUrl}`;
     })
   ).then((forwardedContents) => forwardedContents.filter((content) => content));
 
